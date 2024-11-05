@@ -16,7 +16,7 @@ interface EmojiGridProps {
 }
 
 export default function EmojiGrid({ emojis, onLike }: EmojiGridProps) {
-  const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
+  const [_loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
   const [likingStates, setLikingStates] = useState<Record<string, boolean>>({});
 
   const handleImageLoad = (id: string) => {
@@ -102,7 +102,7 @@ export default function EmojiGrid({ emojis, onLike }: EmojiGridProps) {
             className="rounded-lg object-cover"
             priority
             onLoad={() => handleImageLoad(emoji.id)}
-            onError={(e) => {
+            onError={(_e) => {
               console.error('Error loading image:', emoji.url);
               handleImageLoad(emoji.id);
             }}

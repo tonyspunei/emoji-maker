@@ -11,7 +11,7 @@ export async function uploadImageToStorage(
   const blob = Buffer.from(base64Content, 'base64');
   
   // Upload to Supabase storage using admin client
-  const { _data, error } = await supabaseAdmin.storage
+  const { error } = await supabaseAdmin.storage
     .from('emojis')
     .upload(`public/${fileName}`, blob, {
       contentType: 'image/png',

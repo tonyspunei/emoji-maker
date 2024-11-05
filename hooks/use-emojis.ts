@@ -8,6 +8,7 @@ interface Emoji {
   likes_count: number;
   creator_user_id: string;
   created_at: string;
+  liked: boolean;
 }
 
 export function useEmojis() {

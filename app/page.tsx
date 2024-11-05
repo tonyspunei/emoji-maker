@@ -13,6 +13,16 @@ interface Emoji {
   likeCount: number;
 }
 
+interface EmojiResponse {
+  id: number;
+  image_url: string;
+  prompt: string;
+  likes_count: number;
+  creator_user_id: string;
+  created_at: string;
+  liked: boolean;
+}
+
 export default function Home() {
   const { profile, refetch: refetchProfile } = useProfile();
   const { emojis: dbEmojis, isLoading: emojisLoading, refetch: refetchEmojis } = useEmojis();
@@ -21,18 +31,18 @@ export default function Home() {
   // Transform database emojis to component format and update local state
   useEffect(() => {
     if (dbEmojis) {
-      const transformed = dbEmojis.map(emoji => ({
+      const transformed = dbEmojis.map((emoji: EmojiResponse) => ({
         id: emoji.id.toString(),
         url: emoji.image_url,
-        liked: emoji.liked || false,
+        liked: emoji.liked,
         likeCount: emoji.likes_count
       }));
       setLocalEmojis(transformed);
     }
   }, [dbEmojis]);
 
-  const handleGenerate = async (newEmoji: Emoji) => {
-    await refetchEmojis();
+  const handleGenerate = (_newEmoji: Emoji) => {
+    refetchEmojis();
   };
 
   const handleCreditsUpdate = async () => {

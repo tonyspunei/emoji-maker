@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { Database } from "@/types/supabase";
+
+type EmojiLike = Database['public']['Tables']['emoji_likes']['Row'];
 
 export async function GET() {
   try {
@@ -29,7 +32,7 @@ export async function GET() {
     // Transform the data to include liked status
     const transformedEmojis = emojis.map(emoji => ({
       ...emoji,
-      liked: emoji.emoji_likes?.some(like => like.user_id === userId) || false
+      liked: emoji.emoji_likes?.some((like: EmojiLike) => like.user_id === userId) || false
     }));
 
     return NextResponse.json(transformedEmojis);
