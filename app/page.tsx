@@ -13,20 +13,25 @@ interface Emoji {
 }
 
 export default function Home() {
-  const { profile, isLoading: profileLoading } = useProfile();
+  const { profile, isLoading: profileLoading, refetch: refetchProfile } = useProfile();
   const { emojis: dbEmojis, isLoading: emojisLoading, refetch: refetchEmojis } = useEmojis();
 
   // Transform database emojis to component format
   const transformedEmojis: Emoji[] = dbEmojis.map(emoji => ({
     id: emoji.id.toString(),
     url: emoji.image_url,
-    liked: false, // We'll implement this with the likes feature
+    liked: false,
     likeCount: emoji.likes_count
   }));
 
   const handleGenerate = async (newEmoji: Emoji) => {
     // Refetch emojis after generating a new one
     await refetchEmojis();
+  };
+
+  const handleCreditsUpdate = async () => {
+    // Refetch profile to update credits display
+    await refetchProfile();
   };
 
   const handleLike = (id: string, liked: boolean) => {
@@ -49,7 +54,10 @@ export default function Home() {
           )}
         </div>
         
-        <EmojiGenerator onGenerate={handleGenerate} />
+        <EmojiGenerator 
+          onGenerate={handleGenerate} 
+          onCreditsUpdate={handleCreditsUpdate}
+        />
         
         {emojisLoading ? (
           <div className="mt-8 text-center">

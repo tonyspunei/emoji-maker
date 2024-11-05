@@ -14,9 +14,10 @@ interface Emoji {
 
 interface EmojiGeneratorProps {
   onGenerate?: (emoji: Emoji) => void;
+  onCreditsUpdate?: () => void;
 }
 
-export default function EmojiGenerator({ onGenerate }: EmojiGeneratorProps) {
+export default function EmojiGenerator({ onGenerate, onCreditsUpdate }: EmojiGeneratorProps) {
   const [prompt, setPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +60,9 @@ export default function EmojiGenerator({ onGenerate }: EmojiGeneratorProps) {
 
       // Call the onGenerate callback with the new emoji
       onGenerate?.(newEmoji);
+      
+      // Call onCreditsUpdate to refresh the credits display
+      onCreditsUpdate?.();
       
       // Clear the input
       setPrompt("");
