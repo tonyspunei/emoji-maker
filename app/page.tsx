@@ -24,7 +24,7 @@ export default function Home() {
       const transformed = dbEmojis.map(emoji => ({
         id: emoji.id.toString(),
         url: emoji.image_url,
-        liked: false,
+        liked: emoji.liked || false,
         likeCount: emoji.likes_count
       }));
       setLocalEmojis(transformed);
@@ -32,25 +32,65 @@ export default function Home() {
   }, [dbEmojis]);
 
   const handleGenerate = async (newEmoji: Emoji) => {
-    // Refetch emojis after generating a new one
     await refetchEmojis();
   };
 
   const handleCreditsUpdate = async () => {
-    // Refetch profile to update credits display
     await refetchProfile();
   };
 
-  const handleLike = async (id: string, liked: boolean) => {
-    setLocalEmojis(prev => prev.map(emoji => 
-      emoji.id === id 
-        ? { 
-            ...emoji, 
-            liked,
-            likeCount: liked ? emoji.likeCount + 1 : Math.max(0, emoji.likeCount - 1)
-          } 
-        : emoji
-    ));
+  const handleLike = async (id: string, liked: boolean, newLikeCount?: number) => {
+    try {
+      // Optimistically update the UI
+      setLocalEmojis(prev => prev.map(emoji => 
+        emoji.id === id 
+          ? { 
+              ...emoji, 
+              liked,
+              likeCount: newLikeCount ?? (liked ? emoji.likeCount + 1 : Math.max(0, emoji.likeCount - 1))
+            } 
+          : emoji
+      ));
+
+      if (newLikeCount === undefined) {
+        const response = await fetch('/api/emojis/like', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ emojiId: id, liked }),
+        });
+
+        if (!response.ok) {
+          // If the request fails, revert the optimistic update
+          setLocalEmojis(prev => prev.map(emoji => 
+            emoji.id === id 
+              ? { 
+                  ...emoji, 
+                  liked: !liked,
+                  likeCount: !liked ? emoji.likeCount + 1 : Math.max(0, emoji.likeCount - 1)
+                } 
+              : emoji
+          ));
+          throw new Error('Failed to update like');
+        }
+
+        const data = await response.json();
+        
+        // Update with the actual count from the server
+        setLocalEmojis(prev => prev.map(emoji => 
+          emoji.id === id 
+            ? { 
+                ...emoji, 
+                liked,
+                likeCount: data.likes_count
+              } 
+            : emoji
+        ));
+      }
+    } catch (error) {
+      console.error('Error updating like:', error);
+    }
   };
 
   return (

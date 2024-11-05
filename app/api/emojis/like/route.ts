@@ -14,7 +14,7 @@ export async function POST(req: Request) {
 
     const { emojiId, liked } = await req.json();
 
-    // First get current likes_count
+    // Begin transaction
     const { data: currentEmoji, error: fetchError } = await supabaseAdmin
       .from('emojis')
       .select('likes_count')
@@ -23,10 +23,45 @@ export async function POST(req: Request) {
 
     if (fetchError) throw fetchError;
 
+    if (liked) {
+      // Check if already liked
+      const { data: existingLike } = await supabaseAdmin
+        .from('emoji_likes')
+        .select()
+        .eq('user_id', userId)
+        .eq('emoji_id', emojiId)
+        .single();
+
+      if (existingLike) {
+        return NextResponse.json(
+          { error: 'Already liked' },
+          { status: 400 }
+        );
+      }
+
+      // Add like record
+      const { error: likeError } = await supabaseAdmin
+        .from('emoji_likes')
+        .insert([
+          { user_id: userId, emoji_id: emojiId }
+        ]);
+
+      if (likeError) throw likeError;
+    } else {
+      // Remove like record
+      const { error: unlikeError } = await supabaseAdmin
+        .from('emoji_likes')
+        .delete()
+        .eq('user_id', userId)
+        .eq('emoji_id', emojiId);
+
+      if (unlikeError) throw unlikeError;
+    }
+
+    // Update likes count
     const currentLikes = currentEmoji?.likes_count || 0;
     const newLikesCount = liked ? currentLikes + 1 : Math.max(0, currentLikes - 1);
 
-    // Update likes count
     const { data: emoji, error: updateError } = await supabaseAdmin
       .from('emojis')
       .update({ likes_count: newLikesCount })

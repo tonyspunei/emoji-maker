@@ -54,6 +54,23 @@ export interface Database {
           created_at?: string;
         };
       };
+      emoji_likes: {
+        Row: {
+          user_id: string;
+          emoji_id: number;
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          emoji_id: number;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          emoji_id?: number;
+          created_at?: string;
+        };
+      };
     };
   };
 } 

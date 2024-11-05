@@ -3,7 +3,7 @@
 import { Download, Heart } from "lucide-react";
 import { Button } from "./ui/button";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface EmojiGridProps {
   emojis: Array<{
@@ -12,17 +12,26 @@ interface EmojiGridProps {
     liked: boolean;
     likeCount: number;
   }>;
-  onLike?: (id: string, liked: boolean) => void;
+  onLike?: (id: string, liked: boolean, likeCount: number) => void;
 }
 
 export default function EmojiGrid({ emojis, onLike }: EmojiGridProps) {
   const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [likingStates, setLikingStates] = useState<Record<string, boolean>>({});
 
   const handleImageLoad = (id: string) => {
     setLoadingImages(prev => ({ ...prev, [id]: false }));
   };
+
+  // Pre-cache images
+  useEffect(() => {
+    emojis.forEach(emoji => {
+      // Create a hidden image element
+      const preloadImage = document.createElement('img');
+      preloadImage.src = emoji.url;
+      preloadImage.onload = () => handleImageLoad(emoji.id);
+    });
+  }, [emojis]);
 
   const handleDownload = async (url: string) => {
     try {
@@ -67,7 +76,10 @@ export default function EmojiGrid({ emojis, onLike }: EmojiGridProps) {
 
       if (!response.ok) throw new Error('Failed to update like');
       
-      onLike?.(id, liked);
+      const data = await response.json();
+      
+      // Call onLike with the updated data
+      onLike?.(id, data.liked, data.likes_count);
     } catch (error) {
       console.error('Error updating like:', error);
     } finally {
@@ -81,22 +93,14 @@ export default function EmojiGrid({ emojis, onLike }: EmojiGridProps) {
         <div 
           key={emoji.id} 
           className="relative aspect-square bg-gray-100 rounded-lg group"
-          onMouseEnter={() => setHoveredId(emoji.id)}
-          onMouseLeave={() => setHoveredId(null)}
         >
-          {loadingImages[emoji.id] !== false && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-8 h-8 border-4 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
-            </div>
-          )}
           <Image
             src={emoji.url}
             alt="Generated emoji"
             width={1024}
             height={1024}
-            className={`rounded-lg object-cover transition-opacity duration-200 ${
-              loadingImages[emoji.id] === false ? 'opacity-100' : 'opacity-0'
-            }`}
+            className="rounded-lg object-cover"
+            priority
             onLoad={() => handleImageLoad(emoji.id)}
             onError={(e) => {
               console.error('Error loading image:', emoji.url);
