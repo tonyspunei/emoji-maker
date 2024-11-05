@@ -1,18 +1,47 @@
 import { NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import Replicate from 'replicate';
+import { supabaseAdmin } from '@/lib/supabase';
+import { uploadImageToStorage } from '@/lib/storage';
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
 
-type ReplicateOutput = string[] | { [key: string]: any };
+interface ReplicateOutput {
+  [key: string]: any;
+  0?: string | ReadableStream;
+}
 
 export async function POST(req: Request) {
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const { prompt } = await req.json();
 
     if (!process.env.REPLICATE_API_TOKEN) {
       throw new Error('REPLICATE_API_TOKEN is not set');
+    }
+
+    // Check user's credits using admin client
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('credits')
+      .eq('user_id', userId)
+      .single();
+
+    if (profileError) throw profileError;
+    if (!profile || profile.credits <= 0) {
+      return NextResponse.json(
+        { error: 'No credits remaining' },
+        { status: 403 }
+      );
     }
 
     console.log('Generating emoji with prompt:', prompt);
@@ -38,21 +67,21 @@ export async function POST(req: Request) {
       }
     ) as ReplicateOutput;
 
-    console.log('Raw output:', output);
+    let imageUrl: string;
 
-    // If output is a string array (URL case)
+    // Handle different output formats
     if (Array.isArray(output) && typeof output[0] === 'string' && output[0].startsWith('http')) {
-      return NextResponse.json({ 
-        url: output[0],
-        id: Date.now().toString()
-      });
-    }
-
-    // If output is a ReadableStream
-    if (output && typeof output === 'object' && output[0] instanceof ReadableStream) {
+      // For URL outputs, fetch the image and upload to Supabase
+      const response = await fetch(output[0]);
+      const blob = await response.blob();
+      const base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
+      const dataUrl = `data:image/png;base64,${base64}`;
+      imageUrl = await uploadImageToStorage(dataUrl, `emoji-${Date.now()}.png`);
+    } else if (output && typeof output === 'object' && output[0] instanceof ReadableStream) {
+      // For stream outputs, combine chunks and upload
       const stream = output[0] as ReadableStream;
       const reader = stream.getReader();
-      let chunks = [];
+      const chunks: Uint8Array[] = [];
       
       while (true) {
         const { done, value } = await reader.read();
@@ -60,7 +89,6 @@ export async function POST(req: Request) {
         chunks.push(value);
       }
 
-      // Combine chunks into a single Uint8Array
       const concatenated = new Uint8Array(chunks.reduce((acc, chunk) => acc + chunk.length, 0));
       let offset = 0;
       for (const chunk of chunks) {
@@ -68,17 +96,41 @@ export async function POST(req: Request) {
         offset += chunk.length;
       }
 
-      // Convert to base64
       const base64 = Buffer.from(concatenated).toString('base64');
       const dataUrl = `data:image/png;base64,${base64}`;
-
-      return NextResponse.json({ 
-        url: dataUrl,
-        id: Date.now().toString()
-      });
+      imageUrl = await uploadImageToStorage(dataUrl, `emoji-${Date.now()}.png`);
+    } else {
+      throw new Error('Invalid response format from Replicate');
     }
 
-    throw new Error('Invalid response format from Replicate');
+    // Save to database using admin client
+    const { data: emoji, error: insertError } = await supabaseAdmin
+      .from('emojis')
+      .insert([
+        {
+          image_url: imageUrl,
+          prompt,
+          creator_user_id: userId,
+          likes_count: 0
+        }
+      ])
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
+
+    // Decrement user's credits using admin client
+    const { error: updateError } = await supabaseAdmin
+      .from('profiles')
+      .update({ credits: profile.credits - 1 })
+      .eq('user_id', userId);
+
+    if (updateError) throw updateError;
+
+    return NextResponse.json({ 
+      url: imageUrl,
+      id: emoji.id.toString()
+    });
 
   } catch (error) {
     console.error('Error generating emoji:', error);
