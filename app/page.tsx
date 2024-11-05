@@ -14,7 +14,7 @@ interface Emoji {
 }
 
 export default function Home() {
-  const { profile, isLoading: profileLoading, refetch: refetchProfile } = useProfile();
+  const { profile, refetch: refetchProfile } = useProfile();
   const { emojis: dbEmojis, isLoading: emojisLoading, refetch: refetchEmojis } = useEmojis();
   const [localEmojis, setLocalEmojis] = useState<Emoji[]>([]);
 

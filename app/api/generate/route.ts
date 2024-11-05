@@ -9,7 +9,7 @@ const replicate = new Replicate({
 });
 
 interface ReplicateOutput {
-  [key: string]: any;
+  [key: string]: string | ReadableStream | undefined;
   0?: string | ReadableStream;
 }
 
