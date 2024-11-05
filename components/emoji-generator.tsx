@@ -9,6 +9,7 @@ interface Emoji {
   id: string;
   url: string;
   liked: boolean;
+  likeCount: number;
 }
 
 interface EmojiGeneratorProps {
@@ -53,6 +54,7 @@ export default function EmojiGenerator({ onGenerate }: EmojiGeneratorProps) {
         id: data.id,
         url: data.url,
         liked: false,
+        likeCount: 0,
       };
 
       // Call the onGenerate callback with the new emoji

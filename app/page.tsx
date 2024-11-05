@@ -8,6 +8,7 @@ interface Emoji {
   id: string;
   url: string;
   liked: boolean;
+  likeCount: number;
 }
 
 export default function Home() {
@@ -15,6 +16,18 @@ export default function Home() {
 
   const handleGenerate = (newEmoji: Emoji) => {
     setEmojis(prev => [newEmoji, ...prev]);
+  };
+
+  const handleLike = (id: string, liked: boolean) => {
+    setEmojis(prev => prev.map(emoji => 
+      emoji.id === id 
+        ? { 
+            ...emoji, 
+            liked,
+            likeCount: liked ? emoji.likeCount + 1 : Math.max(0, emoji.likeCount - 1)
+          } 
+        : emoji
+    ));
   };
 
   return (
@@ -26,7 +39,10 @@ export default function Home() {
         </div>
         
         <EmojiGenerator onGenerate={handleGenerate} />
-        <EmojiGrid emojis={emojis} />
+        <EmojiGrid 
+          emojis={emojis} 
+          onLike={handleLike}
+        />
       </div>
     </main>
   );

@@ -10,20 +10,57 @@ interface EmojiGridProps {
     id: string;
     url: string;
     liked: boolean;
+    likeCount: number;
   }>;
+  onLike?: (id: string, liked: boolean) => void;
 }
 
-export default function EmojiGrid({ emojis }: EmojiGridProps) {
+export default function EmojiGrid({ emojis, onLike }: EmojiGridProps) {
   const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   const handleImageLoad = (id: string) => {
     setLoadingImages(prev => ({ ...prev, [id]: false }));
   };
 
+  const handleDownload = async (url: string) => {
+    try {
+      // For data URLs
+      if (url.startsWith('data:')) {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `emoji-${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
+      }
+
+      // For regular URLs
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `emoji-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Error downloading image:', error);
+    }
+  };
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-8">
       {emojis.map((emoji) => (
-        <div key={emoji.id} className="relative aspect-square bg-gray-100 rounded-lg">
+        <div 
+          key={emoji.id} 
+          className="relative aspect-square bg-gray-100 rounded-lg group"
+          onMouseEnter={() => setHoveredId(emoji.id)}
+          onMouseLeave={() => setHoveredId(null)}
+        >
           {loadingImages[emoji.id] !== false && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="w-8 h-8 border-4 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
@@ -43,6 +80,40 @@ export default function EmojiGrid({ emojis }: EmojiGridProps) {
               handleImageLoad(emoji.id);
             }}
           />
+          
+          {/* Overlay with buttons */}
+          <div 
+            className={`absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2`}
+          >
+            <Button
+              size="icon"
+              variant="ghost"
+              className="text-white hover:bg-white/20"
+              onClick={() => handleDownload(emoji.url)}
+            >
+              <Download className="h-5 w-5" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="text-white hover:bg-white/20"
+              onClick={() => onLike?.(emoji.id, !emoji.liked)}
+            >
+              <Heart 
+                className={`h-5 w-5 ${emoji.liked ? 'fill-white' : ''}`} 
+              />
+            </Button>
+          </div>
+
+          {/* Like counter */}
+          <div className="absolute bottom-2 left-0 right-0 flex justify-center">
+            <div className="bg-black/40 px-2 py-1 rounded-full flex items-center gap-1">
+              <Heart className={`h-3 w-3 ${emoji.liked ? 'fill-white' : ''} text-white`} />
+              <span className="text-xs text-white font-medium">
+                {emoji.likeCount}
+              </span>
+            </div>
+          </div>
         </div>
       ))}
     </div>
