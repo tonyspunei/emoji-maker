@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from "react";
+import { useProfile } from "@/hooks/use-profile";
 import EmojiGenerator from "@/components/emoji-generator";
 import EmojiGrid from "@/components/emoji-grid";
 
@@ -12,6 +13,7 @@ interface Emoji {
 }
 
 export default function Home() {
+  const { profile, isLoading: profileLoading } = useProfile();
   const [emojis, setEmojis] = useState<Emoji[]>([]);
 
   const handleGenerate = (newEmoji: Emoji) => {
@@ -33,16 +35,21 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-50 py-12">
       <div className="container mx-auto px-4 max-w-3xl">
-        <div className="flex items-center gap-2 mb-12">
-          <span className="text-4xl">🥺</span>
-          <h1 className="text-4xl font-semibold">Emoj maker</h1>
+        <div className="flex items-center justify-between mb-12">
+          <div className="flex items-center gap-2">
+            <span className="text-4xl">🥺</span>
+            <h1 className="text-4xl font-semibold">Emoj maker</h1>
+          </div>
+          
+          {profile && (
+            <div className="text-sm text-gray-600">
+              Credits remaining: {profile.credits}
+            </div>
+          )}
         </div>
         
         <EmojiGenerator onGenerate={handleGenerate} />
-        <EmojiGrid 
-          emojis={emojis} 
-          onLike={handleLike}
-        />
+        <EmojiGrid emojis={emojis} onLike={handleLike} />
       </div>
     </main>
   );
