@@ -18,6 +18,7 @@ interface EmojiGridProps {
 export default function EmojiGrid({ emojis, onLike }: EmojiGridProps) {
   const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [likingStates, setLikingStates] = useState<Record<string, boolean>>({});
 
   const handleImageLoad = (id: string) => {
     setLoadingImages(prev => ({ ...prev, [id]: false }));
@@ -49,6 +50,28 @@ export default function EmojiGrid({ emojis, onLike }: EmojiGridProps) {
       window.URL.revokeObjectURL(blobUrl);
     } catch (error) {
       console.error('Error downloading image:', error);
+    }
+  };
+
+  const handleLike = async (id: string, liked: boolean) => {
+    try {
+      setLikingStates(prev => ({ ...prev, [id]: true }));
+      
+      const response = await fetch('/api/emojis/like', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ emojiId: id, liked }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update like');
+      
+      onLike?.(id, liked);
+    } catch (error) {
+      console.error('Error updating like:', error);
+    } finally {
+      setLikingStates(prev => ({ ...prev, [id]: false }));
     }
   };
 
@@ -97,10 +120,13 @@ export default function EmojiGrid({ emojis, onLike }: EmojiGridProps) {
               size="icon"
               variant="ghost"
               className="text-white hover:bg-white/20"
-              onClick={() => onLike?.(emoji.id, !emoji.liked)}
+              onClick={() => handleLike(emoji.id, !emoji.liked)}
+              disabled={likingStates[emoji.id]}
             >
               <Heart 
-                className={`h-5 w-5 ${emoji.liked ? 'fill-white' : ''}`} 
+                className={`h-5 w-5 ${
+                  likingStates[emoji.id] ? 'animate-pulse' : ''
+                } ${emoji.liked ? 'fill-white' : ''}`} 
               />
             </Button>
           </div>
