@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from "react";
 import { useProfile } from "@/hooks/use-profile";
+import { useEmojis } from "@/hooks/use-emojis";
 import EmojiGenerator from "@/components/emoji-generator";
 import EmojiGrid from "@/components/emoji-grid";
 
@@ -14,22 +14,23 @@ interface Emoji {
 
 export default function Home() {
   const { profile, isLoading: profileLoading } = useProfile();
-  const [emojis, setEmojis] = useState<Emoji[]>([]);
+  const { emojis: dbEmojis, isLoading: emojisLoading, refetch: refetchEmojis } = useEmojis();
 
-  const handleGenerate = (newEmoji: Emoji) => {
-    setEmojis(prev => [newEmoji, ...prev]);
+  // Transform database emojis to component format
+  const transformedEmojis: Emoji[] = dbEmojis.map(emoji => ({
+    id: emoji.id.toString(),
+    url: emoji.image_url,
+    liked: false, // We'll implement this with the likes feature
+    likeCount: emoji.likes_count
+  }));
+
+  const handleGenerate = async (newEmoji: Emoji) => {
+    // Refetch emojis after generating a new one
+    await refetchEmojis();
   };
 
   const handleLike = (id: string, liked: boolean) => {
-    setEmojis(prev => prev.map(emoji => 
-      emoji.id === id 
-        ? { 
-            ...emoji, 
-            liked,
-            likeCount: liked ? emoji.likeCount + 1 : Math.max(0, emoji.likeCount - 1)
-          } 
-        : emoji
-    ));
+    // We'll implement this with the likes feature
   };
 
   return (
@@ -49,7 +50,17 @@ export default function Home() {
         </div>
         
         <EmojiGenerator onGenerate={handleGenerate} />
-        <EmojiGrid emojis={emojis} onLike={handleLike} />
+        
+        {emojisLoading ? (
+          <div className="mt-8 text-center">
+            <div className="w-8 h-8 border-4 border-gray-200 border-t-gray-500 rounded-full animate-spin mx-auto" />
+          </div>
+        ) : (
+          <EmojiGrid 
+            emojis={transformedEmojis} 
+            onLike={handleLike}
+          />
+        )}
       </div>
     </main>
   );
